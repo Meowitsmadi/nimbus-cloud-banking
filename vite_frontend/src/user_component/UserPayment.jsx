@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 const UserPayment = () => {
    const [isModalOpen, setIsModalOpen] = useState(false);
    const [accountTypes, setAccountTypes] = useState([]);
-   const [selectedAccountType, setSelectedAccountType] = useState("checking");
+   const [selectedAccountType, setSelectedAccountType] = useState("");
    const [accountNumber, setAccountNumber] = useState("");
    const [amount, setAmount] = useState("");
    const [fee, setFee] = useState("0");
@@ -16,31 +16,30 @@ const UserPayment = () => {
    const [recurringPayments, setRecurringPayments] = useState([]);
    const [error, setError] = useState("");
 
-   // ALEX HERE'S THE DATE
    const [payDate, setPayDate] = useState("");
    const handleDateChange = (event) => {
       setPayDate(event.target.value);
-      console.log(payDate);
    };
    const [recurringDays, setRecurringDays] = useState("");
+   const [biller, setBiller] = useState("");
 
    const navigate = useNavigate();
 
    const openModal = () => {
       setError("");
-      if (amount == "") {
+      if (amount === "") {
          setError("Error: Please enter an amount");
          return;
-      } else if (amount == "0") {
+      } else if (amount === "0") {
          setError("Error: Please enter a valid amount");
          return;
-      } else if (payDate == "") {
+      } else if (payDate === "") {
          setError("Error: Please enter a date");
          return;
-      } else if (recurringDays == "") {
+      } else if (recurringDays === "") {
          setError("Error: Please enter a recurring day interval");
          return;
-      } else if (recurringDays == "0") {
+      } else if (recurringDays === "0") {
          setError("Error: Please enter a valid recurring day interval");
          return;
       }
@@ -93,8 +92,14 @@ const UserPayment = () => {
                );
             }
 
+            
+
             const data = await response.json();
             setAccountTypes(data);
+
+            if (data.length > 0) {
+               setSelectedAccountType(data[0]);
+            }
          } catch (error) {
             console.error("Error fetching account types:", error);
          }
@@ -185,7 +190,6 @@ const UserPayment = () => {
       e.preventDefault();
       const token = localStorage.getItem("access_token");
       setIsSubmitting(true);
-      console.log("Access Token:", token); // Log the access token
       if (!token) {
          console.error("No access token found");
          setIsSubmitting(false);
@@ -205,22 +209,23 @@ const UserPayment = () => {
                amount: parseFloat(amount),
                next_payment_date: payDate,
                interval_days: recurringDays,
+               destination: biller,
             }),
          }
       );
+      const responseData = await response.json();
       if (!response.ok) {
-         const errorData = await response.json();
-         console.log(errorData["error"]);
-         setMessage(
-            errorData["error"] || "Payment failed. Please check your amount."
-         );
+         if (responseData.error && responseData.error.includes("insufficient funds")) {
+            setMessage("Insufficient funds.");
+         } else {
+            setMessage(responseData.error || "Payment failed. Please try again.");
+         }
          setIsSubmitting(false);
-         setMessage("Insufficient funds.");
       } else {
-         const data = await response.json();
-         console.log(data);
          setMessage("Payment successful. Redirecting to dashboard.");
+         setIsModalOpen(false); 
          setTimeout(() => navigate("/userdashboard"), 2000);
+         
       }
    };
 
@@ -254,8 +259,8 @@ const UserPayment = () => {
                            type="text"
                            placeholder="Amount"
                            value={amount}
-                           min="0" // No negative amounts
-                           step="0.01" // Allow decimal values
+                           min="0"
+                           step="0.01"
                            onChange={(e) => {
                               const value = e.target.value;
                               if (/^\d*\.?\d{0,2}$/.test(value)) {
@@ -308,6 +313,18 @@ const UserPayment = () => {
                            }}
                         />
                      </div>
+                     <div className="item">
+                        <p className="text">Enter bill payment destination: </p>
+                        <input
+                           className="payment-input"
+                           type="text"
+                           value={biller}
+                           onChange={(e) => {
+                              const value = e.target.value;
+                              setBiller(value);
+                           }}
+                        />
+                     </div>
 
                      <div className="recurring-payments-container">
                         <h3 className="title">Recurring Payments</h3>
@@ -320,6 +337,7 @@ const UserPayment = () => {
                                        <th>Next Payment Date</th>
                                        <th>Interval (Days)</th>
                                        <th>Status</th>
+                                       <th>Biller</th>
                                     </tr>
                                  </thead>
                                  <tbody>
@@ -333,6 +351,7 @@ const UserPayment = () => {
                                                 ? "Active"
                                                 : "Inactive"}
                                           </td>
+                                          <td>{payment.destination}</td>
                                        </tr>
                                     ))}
                                  </tbody>
@@ -359,7 +378,7 @@ const UserPayment = () => {
                         <p
                            className="text"
                            style={{
-                              display: error == "" ? "none" : "block",
+                              display: error === "" ? "none" : "block",
                               color: "red",
                               padding: "12px",
                            }}

@@ -28,6 +28,7 @@ One of the best things about software is that they can make our lives more effic
     - vite-1    |   ➜  Local:   http://localhost:5173/
   
 ## Showcase
+Project Video Demo: https://youtu.be/sortpnx6NxI?si=xH52LSEQerO-5J75 
 
 ## Developers
 
